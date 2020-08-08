@@ -7,6 +7,8 @@ function draw()
     local errorstring = state.GetValue("errorstring") or ""
 
     --yes i know this code is bad and ineffiencesafiuhsdvksfiuhuihsdfih
+    --it took over a minute to check my 15.5k note 4k map
+    --it took almost half a minute to check Uta, a 12.1k note 7k map
     if imgui.Button("no guarantees") then
         local notes = {}
 
@@ -59,13 +61,21 @@ function draw()
             errorstring = errorstring .. error .. ", "
         end
         errorstring = errorstring:sub(1,-3)
+
+        if errorstring == "" then
+            errorstring = "probably no stacked notes"
+        end
     end
 
     imgui.TextWrapped(errorstring)
+    if errorstring != "" then
+        imgui.TextWrapped("")
+    end
+
     --imgui.TextWrapped(debug)
 
     imgui.TextWrapped("Good news, this probably works.")
-    imgui.TextWrapped("Bad news, it freezes the game for a few seconds on Uta.")
+    imgui.TextWrapped("Bad news, it freezes the game for a \"few\" seconds on Uta.")
 
     state.SetValue("errorstring", errorstring)
     --state.SetValue("debug", debug)
