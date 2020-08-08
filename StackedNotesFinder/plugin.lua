@@ -75,7 +75,7 @@ function draw()
     --imgui.TextWrapped(debug)
 
     imgui.TextWrapped("Good news, this probably works.")
-    imgui.TextWrapped("Bad news, it freezes the game for a \"few\" seconds on Uta.")
+    imgui.TextWrapped("Bad news, this freezes the game for a \"few\" seconds on Uta.")
 
     state.SetValue("errorstring", errorstring)
     --state.SetValue("debug", debug)
