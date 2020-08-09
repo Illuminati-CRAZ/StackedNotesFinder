@@ -3,8 +3,19 @@ function draw()
 
     state.IsWindowHovered = imgui.IsWindowHovered()
 
+    local lenience = state.GetValue("lenience") or 0
+
+    local errors = state.GetValue("errors") or {}
+
     --local debug = state.GetValue("debug") or "hi"
     local errorstring = state.GetValue("errorstring") or ""
+
+    local currentobject = state.GetValue("currentobject") or 0
+
+    local showcopytext = state.GetValue("showcopytext") or false
+
+    _, lenience = imgui.InputInt("Lenience", lenience)
+    if lenience < 0 then lenience = 0 end
 
     --the following code is bad, do not do this
     --it took over a minute to check my 15.5k note 4k map
@@ -69,6 +80,7 @@ function draw()
 
     --this one's better, I think
     --i didn't really test this thoroughly to make sure it catches everything, but I think the logic is sound(?)
+    --okay nevermind I found a problem like 6 hours later and fixed it probably
     --only takes at most a few seconds for a 15k note map
     if imgui.Button(":flushed:") then
         local notes = {}
@@ -96,42 +108,91 @@ function draw()
             debug = debug .. "true" .. ", "
         end--]]
 
-        local errors = {}
+        errors = {}
 
         for i=1,8,1 do
-            local prev = -1
+            local prev = utils.CreateHitObject(-1, i)
             local prevstart = -1
             local prevend = -1
             for _,note in pairs(notes[i]) do
                 if note.EndTime > 0 then
-                    if (prevstart <= note.StartTime) and (note.StartTime <= prevend) then
-                        table.insert(errors, note.StartTime .. "|" .. i)
-                    elseif (prevstart <= note.EndTime) and (note.EndTime <= prevend) then
-                        table.insert(errors, note.StartTime .. "|" .. i)
-                    elseif (note.StartTime <= prev) and (prev <= note.EndTime) then
-                        table.insert(errors, prev .. "|" .. i)
+                    if (prevstart <= note.StartTime) and (note.StartTime <= prevend + lenience) then
+                        table.insert(errors, note)
+                    elseif (prevstart - lenience <= note.EndTime) and (note.EndTime <= prevend) then
+                        table.insert(errors, note)
+                    elseif (note.StartTime - lenience <= prev.StartTime) and (prev.StartTime <= note.EndTime + lenience) then
+                        table.insert(errors, prev)
                     end
                     prevstart = note.StartTime
-                    prevend = note.EndTime
-                else
-                    if (prevstart <= note.StartTime) and (note.StartTime <= prevend) then
-                        table.insert(errors, note.StartTime .. "|" .. i)
-                    elseif note.StartTime == prev then
-                        table.insert(errors, note.StartTime .. "|" .. i)
+                    if note.EndTime > prevend then
+                        prevend = note.EndTime
                     end
-                    prev = note.StartTime
+                else
+                    if (prevstart - lenience <= note.StartTime) and (note.StartTime <= prevend + lenience) then
+                        table.insert(errors, note)
+                    elseif (prev.StartTime - lenience <= note.StartTime) and (note.StartTime <= prev.StartTime + lenience) then
+                        table.insert(errors, note)
+                    end
+                    prev = note
                 end
             end
         end
 
+        table.sort(errors, function(a, b) return a.StartTime < b.StartTime end)
+
         errorstring = ""
         for _,error in pairs(errors) do
-            errorstring = errorstring .. error .. ", "
+            errorstring = errorstring .. error.StartTime .. "|" .. error.Lane .. ", "
         end
         errorstring = errorstring:sub(1,-3)
 
         if errorstring == "" then
             errorstring = "probably no stacked notes"
+        end
+
+        currentobject = 0
+    end
+
+    if errors[1] then
+        imgui.Text("")
+        --imgui.Columns(3)
+        if imgui.Button("Go to Previous Object") then
+            if currentobject > 1 then
+                currentobject = currentobject - 1
+            else
+                currentobject = #errors
+            end
+            actions.GoToObjects(errors[currentobject].StartTime .. "|" .. errors[currentobject].Lane)
+            showcopytext = false
+        end
+
+
+        imgui.SameLine(0, 4)
+        --imgui.separator()
+        --imgui.NextColumn()
+        if imgui.Button("Go to Next Object") then
+            if currentobject < #errors then
+                currentobject = currentobject + 1
+            else
+                currentobject = 1
+            end
+            actions.GoToObjects(errors[currentobject].StartTime .. "|" .. errors[currentobject].Lane)
+            showcopytext = false
+        end
+
+        imgui.SameLine(0, 4)
+        --imgui.NextColumn()
+        if imgui.Button("Copy to Clipboard") then
+            imgui.SetClipboardText(errorstring)
+            showcopytext = true
+        end
+
+        --imgui.Columns(1)
+
+        imgui.TextWrapped(currentobject .. "/" .. #errors)
+        if showcopytext then
+            imgui.SameLine(0,4)
+            imgui.TextWrapped("Copied!")
         end
     end
 
@@ -144,7 +205,16 @@ function draw()
 
     imgui.TextWrapped("what if we kissed.... during the overlapped note in uta :flushed:")
 
+    state.SetValue("lenience", lenience)
+
     state.SetValue("errorstring", errorstring)
+
+    state.SetValue("errors", errors)
+
+    state.SetValue("currentobject", currentobject)
+
+    state.SetValue("showcopytext", showcopytext)
+    
     --state.SetValue("debug", debug)
 
     imgui.End()
